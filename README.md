@@ -1,5 +1,14 @@
-# Express TypeScript CLI
-
+# Hektor CLI
+ ██░ ██ ▓█████  ██ ▄█▀▄▄▄█████▓ ▒█████   ██▀███  
+▓██░ ██▒▓█   ▀  ██▄█▒ ▓  ██▒ ▓▒▒██▒  ██▒▓██ ▒ ██▒
+▒██▀▀██░▒███   ▓███▄░ ▒ ▓██░ ▒░▒██░  ██▒▓██ ░▄█ ▒
+░▓█ ░██ ▒▓█  ▄ ▓██ █▄ ░ ▓██▓ ░ ▒██   ██░▒██▀▀█▄  
+░▓█▒░██▓░▒████▒▒██▒ █▄  ▒██▒ ░ ░ ████▓▒░░██▓ ▒██▒
+ ▒ ░░▒░▒░░ ▒░ ░▒ ▒▒ ▓▒  ▒ ░░   ░ ▒░▒░▒░ ░ ▒▓ ░▒▓░
+ ▒ ░▒░ ░ ░ ░  ░░ ░▒ ▒░    ░      ░ ▒ ▒░   ░▒ ░ ▒░
+ ░  ░░ ░   ░   ░ ░░ ░   ░      ░ ░ ░ ▒    ░░   ░ 
+ ░  ░  ░   ░  ░░  ░                ░ ░     ░     
+                                               
 ![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)
 
 A professional command-line interface for quickly scaffolding Express TypeScript applications with clean architecture.
