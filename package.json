@@ -1,0 +1,34 @@
+{
+  "name": "hektor-cli",
+  "version": "1.0.0",
+  "main": "index.js",
+  "type": "module",
+  "bin": {
+    "hektor": "./index.js"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js"
+  },
+  "keywords": [
+    "cli",
+    "generator",
+    "scaffolding",
+    "developer-tools"
+  ],
+  "author": "",
+  "license": "ISC",
+  "description": "A professional CLI tool with advanced features and beautiful UI",
+  "dependencies": {
+    "boxen": "^8.0.1",
+    "chalk": "^5.4.1",
+    "chalk-animation": "^2.0.3",
+    "chalk-pipe": "^6.2.0",
+    "commander": "^13.1.0",
+    "figlet": "^1.8.1",
+    "gradient-string": "^3.0.0",
+    "inquirer": "^12.5.2",
+    "ora": "^8.2.0",
+    "terminal-link": "^4.0.0"
+  }
+}
