@@ -13,16 +13,34 @@ import { execSync } from 'child_process';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// Handle exit gracefully
+process.on('SIGINT', () => {
+  console.log('\n');
+  console.log(chalk.cyan('👋 Goodbye! CLI execution was cancelled.'));
+  process.exit(0);
+});
+
 export async function init(options) {
-  // Welcome message with animation
+  // Custom inquirer prompt handler to catch CTRL+C
+  const promptWithCatch = async (prompts) => {
+    try {
+      return await inquirer.prompt(prompts);
+    } catch (error) {
+      if (error.message && error.message.includes('User force closed the prompt')) {
+        console.log('\n');
+        console.log(chalk.cyan('👋 Goodbye! CLI execution was cancelled.'));
+        process.exit(0);
+      }
+      throw error;
+    }
+  };
+
   const rainbow = chalkAnimation.rainbow(' Welcome to Hektor CLI!');
   await sleep(2000);
-    rainbow.stop();
+  rainbow.stop();
 
-  
-
-  // Get project name
-  const nameAnswer = await inquirer.prompt([
+  // Use the custom prompt handler instead of direct inquirer calls
+  const nameAnswer = await promptWithCatch([
     {
       type: 'input',
       name: 'name',
@@ -34,8 +52,7 @@ export async function init(options) {
   
   const projectName = nameAnswer.name;
   
-  // Choose template type
-  const templateAnswer = await inquirer.prompt([
+  const templateAnswer = await promptWithCatch([
     {
       type: 'list',
       name: 'template',
@@ -49,18 +66,46 @@ export async function init(options) {
   
   const templateType = templateAnswer.template;
   
-  // Show a spinner while "initializing"
+  // Ask about code formatting, linting and git using checkboxes instead of yes/no prompts
+  const configOptionAnswer = await promptWithCatch([
+    {
+      type: 'checkbox',
+      name: 'options',
+      message: 'Select configuration options:',
+      choices: [
+        { 
+          name: chalk.blue('Prettier') + chalk.gray(' - Code formatting'),
+          value: 'prettier',
+          checked: true
+        },
+        {
+          name: chalk.yellow('ESLint') + chalk.gray(' - Code linting'),
+          value: 'eslint',
+          checked: true
+        },
+        {
+          name: chalk.green('Git') + chalk.gray(' - Initialize repository'),
+          value: 'git',
+          checked: true
+        }
+      ]
+    }
+  ]);
+  
+  const selectedOptions = configOptionAnswer.options;
+  const prettier = selectedOptions.includes('prettier');
+  const eslint = selectedOptions.includes('eslint');
+  const git = selectedOptions.includes('git');
+  
   const spinner = ora({
     text: `Creating ${chalk.cyan(templateType)} project...`,
     color: 'cyan',
   }).start();
   
   try {
-    // Create project directory
     const projectDir = path.join(process.cwd(), projectName);
     await fs.mkdir(projectDir, { recursive: true });
     
-    // Create package.json
     const packageJson = {
       name: projectName,
       version: '1.0.0',
@@ -94,12 +139,98 @@ export async function init(options) {
       }
     };
     
+    // Add Prettier configuration if selected
+    if (prettier) {
+      packageJson.devDependencies['prettier'] = '^3.0.3';
+      packageJson.scripts['format'] = 'prettier --write "src/**/*.ts"';
+      
+      await fs.writeFile(
+        path.join(projectDir, '.prettierrc'),
+        JSON.stringify({
+          semi: true,
+          trailingComma: 'all',
+          singleQuote: true,
+          printWidth: 100,
+          tabWidth: 2
+        }, null, 2)
+      );
+    }
+    
+    // Add ESLint configuration if selected
+    if (eslint) {
+      packageJson.devDependencies['eslint'] = '^8.55.0';
+      packageJson.devDependencies['@typescript-eslint/eslint-plugin'] = '^6.14.0';
+      packageJson.devDependencies['@typescript-eslint/parser'] = '^6.14.0';
+      packageJson.scripts['lint'] = 'eslint "src/**/*.ts"';
+      packageJson.scripts['lint:fix'] = 'eslint "src/**/*.ts" --fix';
+      
+      await fs.writeFile(
+        path.join(projectDir, '.eslintrc.json'),
+        JSON.stringify({
+          "parser": "@typescript-eslint/parser",
+          "plugins": ["@typescript-eslint"],
+          "extends": [
+            "eslint:recommended",
+            "plugin:@typescript-eslint/recommended"
+          ],
+          "rules": {
+            "no-console": "warn",
+            "@typescript-eslint/explicit-function-return-type": "warn",
+            "@typescript-eslint/no-unused-vars": "error"
+          },
+          "parserOptions": {
+            "ecmaVersion": 2022,
+            "sourceType": "module"
+          },
+          "env": {
+            "node": true,
+            "es6": true
+          }
+        }, null, 2)
+      );
+    }
+    
+    // Combine Prettier and ESLint if both are selected
+    if (prettier && eslint) {
+      packageJson.devDependencies['eslint-config-prettier'] = '^9.1.0';
+      packageJson.devDependencies['eslint-plugin-prettier'] = '^5.0.1';
+      
+      // Update ESLint config to work with Prettier
+      const eslintConfig = {
+        "parser": "@typescript-eslint/parser",
+        "plugins": ["@typescript-eslint", "prettier"],
+        "extends": [
+          "eslint:recommended",
+          "plugin:@typescript-eslint/recommended",
+          "plugin:prettier/recommended"
+        ],
+        "rules": {
+          "no-console": "warn",
+          "@typescript-eslint/explicit-function-return-type": "warn",
+          "@typescript-eslint/no-unused-vars": "error",
+          "prettier/prettier": "error"
+        },
+        "parserOptions": {
+          "ecmaVersion": 2022,
+          "sourceType": "module"
+        },
+        "env": {
+          "node": true,
+          "es6": true
+        }
+      };
+      
+      await fs.writeFile(
+        path.join(projectDir, '.eslintrc.json'),
+        JSON.stringify(eslintConfig, null, 2)
+      );
+    }
+    
     await fs.writeFile(
       path.join(projectDir, 'package.json'),
       JSON.stringify(packageJson, null, 2)
     );
     
-    // Create tsconfig.json
     const tsConfig = {
       compilerOptions: {
         target: 'es2022',
@@ -120,19 +251,16 @@ export async function init(options) {
       JSON.stringify(tsConfig, null, 2)
     );
     
-    // Create .env file
     await fs.writeFile(
       path.join(projectDir, '.env'),
       'PORT=3000\nNODE_ENV=development\n'
     );
     
-    // Create .gitignore
     await fs.writeFile(
       path.join(projectDir, '.gitignore'),
       'node_modules\ndist\n.env\n.DS_Store\n'
     );
     
-    // Create necessary folders
     const folders = [
       'src',
       'src/controllers',
@@ -149,9 +277,7 @@ export async function init(options) {
       await fs.mkdir(path.join(projectDir, folder), { recursive: true });
     }
     
-    // Create basic files
     
-    // src/index.ts
     await fs.writeFile(
       path.join(projectDir, 'src', 'index.ts'),
       `import express from 'express';
@@ -186,7 +312,6 @@ app.listen(PORT, () => {
 `
     );
     
-    // src/routes/index.ts
     await fs.writeFile(
       path.join(projectDir, 'src', 'routes', 'index.ts'),
       `import { Router } from 'express';
@@ -202,7 +327,6 @@ export { router };
 `
     );
     
-    // src/config/database.ts
     await fs.writeFile(
       path.join(projectDir, 'src', 'config', 'database.ts'),
       `// Database configuration will go here
@@ -228,9 +352,7 @@ export default connectDB;
 `
     );
     
-    // If CRUD template is selected, add more sample files
     if (templateType === 'express-ts-crud') {
-      // Create sample User model
       await fs.writeFile(
         path.join(projectDir, 'src', 'models', 'User.ts'),
         `export interface User {
@@ -246,7 +368,6 @@ export const users: User[] = [];
 `
       );
       
-      // Create DTO
       await fs.writeFile(
         path.join(projectDir, 'src', 'dtos', 'UserDto.ts'),
         `export interface CreateUserDto {
@@ -261,7 +382,6 @@ export interface UpdateUserDto {
 `
       );
       
-      // Create service
       await fs.writeFile(
         path.join(projectDir, 'src', 'services', 'UserService.ts'),
         `import { User, users } from '../models/User';
@@ -320,7 +440,6 @@ export class UserService {
 `
       );
       
-      // Create controller
       await fs.writeFile(
         path.join(projectDir, 'src', 'controllers', 'UserController.ts'),
         `import { Request, Response } from 'express';
@@ -388,7 +507,6 @@ export class UserController {
 `
       );
       
-      // Create routes
       await fs.writeFile(
         path.join(projectDir, 'src', 'routes', 'userRoutes.ts'),
         `import { Router } from 'express';
@@ -407,7 +525,6 @@ export { router as userRouter };
 `
       );
       
-      // Update main router to include user routes
       await fs.writeFile(
         path.join(projectDir, 'src', 'routes', 'index.ts'),
         `import { Router } from 'express';
@@ -427,7 +544,6 @@ export { router };
 `
       );
       
-      // Update package.json to include uuid
       packageJson.dependencies['uuid'] = '^9.0.1';
       packageJson.devDependencies['@types/uuid'] = '^9.0.7';
       
@@ -437,7 +553,23 @@ export { router };
       );
     }
     
-    // Update spinner message
+    // Initialize Git repository if selected
+    if (git) {
+      try {
+        spinner.info('Initializing Git repository...');
+        execSync('git init', { cwd: projectDir });
+        execSync('git add .', { cwd: projectDir });
+        execSync('git commit -m "Initial commit from Hektor CLI"', { 
+          cwd: projectDir,
+          env: { ...process.env, GIT_COMMITTER_NAME: 'Hektor CLI', GIT_COMMITTER_EMAIL: 'hektor@example.com' }
+        });
+        spinner.succeed('Git repository initialized');
+      } catch (gitError) {
+        spinner.warn(`Git initialization failed: ${gitError.message}`);
+        console.log(chalk.yellow('You can initialize git manually after project setup.'));
+      }
+    }
+    
     spinner.succeed(`${chalk.green('Successfully')} created ${chalk.cyan(templateType)} project!`);
     
     console.log('\n');
@@ -448,7 +580,17 @@ export { router };
     console.log(chalk.cyan('  npm run dev'));
     console.log('\n');
     
-    // Add extra instructions for CRUD template
+    if (prettier) {
+      console.log(chalk.blue('🔍 Code formatting:'));
+      console.log(chalk.cyan('  npm run format  - Format code with Prettier'));
+    }
+    
+    if (eslint) {
+      console.log(chalk.blue('🔍 Code linting:'));
+      console.log(chalk.cyan('  npm run lint     - Check for code issues'));
+      console.log(chalk.cyan('  npm run lint:fix - Fix code issues automatically'));
+    }
+    
     if (templateType === 'express-ts-crud') {
       console.log(chalk.magenta('✨ CRUD API endpoints:'));
       console.log(chalk.cyan('  GET    /api/users     - Get all users'));

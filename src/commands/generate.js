@@ -8,10 +8,8 @@ import { sleep } from '../utils/helpers.js';
 import { GENERATOR_TYPES } from '../constants/generator-types.js';
 
 export async function generate(options) {
-  // Welcome message with gradient
   console.log(gradient.pastel.multiline('🚀 Hektor Generate Tool 🚀\n'));
   
-  // Validate options or prompt for them
   let { type, name } = options;
   
   if (!GENERATOR_TYPES.includes(type)) {
@@ -38,23 +36,19 @@ export async function generate(options) {
     name = nameAnswer.name;
   }
   
-  // Animate generating message
   const animation = chalkAnimation.pulse(`Generating ${type}: ${name}`);
   await sleep(1500);
   animation.stop();
   
-  // Show spinner while "generating"
   const spinner = ora({
     text: `Scaffolding ${chalk.cyan(type)}: ${chalk.green(name)}...`,
     color: 'green',
   }).start();
   
-  // Simulate generation process
   await sleep(2000);
   
   spinner.succeed(`${chalk.green.bold(type)} created successfully!`);
   
-  // Show summary in a box
   const summary = boxen(
     `${chalk.bold('Generation Summary')}\n\n` +
     `Type: ${chalk.cyan(type)}\n` +
