@@ -34,8 +34,8 @@ export async function init(options) {
       throw error;
     }
   };
-
-  const rainbow = chalkAnimation.rainbow(' Welcome to Hektor CLI!');
+  console.log("\n");
+  const rainbow = chalkAnimation.karaoke(' Welcome to Hektor');
   await sleep(2000);
   rainbow.stop();
 
