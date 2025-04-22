@@ -45,7 +45,7 @@ export async function generate(options) {
     color: 'green',
   }).start();
   
-  await sleep(2000);
+  await sleep(1000);
   
   spinner.succeed(`${chalk.green.bold(type)} created successfully!`);
   
